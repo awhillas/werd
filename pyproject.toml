@@ -1,0 +1,30 @@
+[project]
+name = "werd"
+version = "0.1"
+description = "CLI tool for static website generation with a focus on translationt to any number of lnaguages via AI"
+readme = "README.md"
+authors = [{ name = "Alexander Whillas", email = "whillas@gmail.com" }]
+license = { text = "Apache-2.0" }
+requires-python = ">=3.8"
+classifiers = ["License :: OSI Approved :: Apache Software License"]
+dependencies = [
+    "click",
+    "python-dotenv",
+    "jinja2",
+    "markdown",
+    "pyyaml",
+    "openai",
+    "pydantic",
+]
+
+[project.urls]
+Homepage = "https://github.com/awhillas/werd"
+Changelog = "https://github.com/awhillas/werd/releases"
+Issues = "https://github.com/awhillas/werd/issues"
+CI = "https://github.com/awhillas/werd/actions"
+
+[project.entry-points.console_scripts]
+werd = "werd.cli:cli"
+
+[project.optional-dependencies]
+dev = ["pytest", "pylint", "black", "pip-tools", "responses"]

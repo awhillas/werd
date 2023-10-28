@@ -1,0 +1,10 @@
+site_name:
+  en: My Multilingul Website!
+
+language:
+  default: en
+  source: en
+  output:
+  - en
+  - jp
+  - de
