@@ -2,19 +2,38 @@ import os
 import shutil
 from pathlib import Path
 
+import pytest
 import responses
+from click.testing import CliRunner
 from dotenv import load_dotenv
 
+from werd.cli import cli
 from werd.config import ConfigModel
 from werd.translate import translate_content
 
 
-def test_translate(tmp_path: Path):
-    """Test the translate command."""
+def setup_std_test_env_dir(tmp_path: Path):
+    """Copy all the test files accross to the temp directory."""
     shutil.copyfile(Path.cwd() / "tests/.env", tmp_path / ".env")
+    shutil.copyfile(Path.cwd() / "werd/templates/config.yaml", tmp_path / "config.yaml")
     shutil.copytree(Path.cwd() / "tests/content", tmp_path / "content")
     os.chdir(tmp_path)
     load_dotenv(tmp_path / ".env")
+    return tmp_path
+
+
+def test_translate_command(tmp_path: Path):
+    """Test the translate CLI command."""
+    setup_std_test_env_dir(tmp_path)
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["translate"])
+    assert result.exit_code == 0
+
+
+def test_translate_function(tmp_path: Path):
+    """Test just the translate command."""
+    setup_std_test_env_dir(tmp_path)
 
     config = ConfigModel(
         **{

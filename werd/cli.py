@@ -9,6 +9,8 @@ from .config import ConfigModel
 
 load_dotenv(os.getcwd() + "/.env")
 
+CONFIG = None
+
 
 def check_env():
     """Check for environment variables."""
@@ -31,12 +33,10 @@ def check_config() -> ConfigModel:
 @click.version_option()
 @click.pass_context
 def cli(ctx):
-    "CLI tool for static website generation with a focus on translationt to any number of lnaguages via AI"
+    "CLI tool for static website generation with a focus on translation to any number of lnaguages via  AI"
+    ctx.ensure_object(dict)
 
-    # ensure that ctx.obj exists and is a dict (in case `cli()` is called
-    # by means other than the `if` block below)
     if ctx.invoked_subcommand != "init":
-        ctx.ensure_object(dict)
         try:
             ctx.obj["config"] = check_config()
         except FileNotFoundError as e:
@@ -45,8 +45,7 @@ def cli(ctx):
 
 
 @cli.command(name="init")
-@click.pass_context
-def init(ctx):
+def init():
     "Create a config.yaml file."
     from werd.init import inti_command
 
@@ -67,13 +66,16 @@ def translate(ctx, all: bool):
 
     translate_all = False
     if all:
-        click.echo("Translating all files.")
+        click.echo("Translating all content files.")
         translate_all = True
 
-    translate_content(ctx["config"], translate_all)
+    translate_content(ctx.obj["config"], translate_all)
 
 
+@cli.command(name="render")
+@click.pass_context
 def render_content(ctx):
+    """Render the translated markdown files into HTML."""
     from werd.render import render_content
 
-    render_content(ctx["config"])
+    render_content(ctx.obj["config"])

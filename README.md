@@ -79,6 +79,7 @@ In order of most likely to-do to least
         - [ ] ftp?
     - [ ] **scaffold** - setup content, templates directories and config file.
 - [ ] Documentation site (using werd and translated)
+- [ ] Switch to SQLite for all data tracking?
 
 ## Credits
 
