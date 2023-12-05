@@ -1,7 +1,7 @@
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+import yaml
 from pydantic import BaseModel, validator
 
 """
@@ -9,9 +9,6 @@ Example:
 
 site_name:
   en: Data Ninja
-  jp: データ忍者
-  ko: 데이터 닌자
-  de: Daten-Ninja
 
 language:
   default: en
@@ -52,14 +49,24 @@ class ConfigModel(BaseModel):
 
         return dir_path
 
+    @classmethod
+    def get_file_path(cls, path: str):
+        if path is None:
+            path = Path("config.yaml")
 
-class Page(BaseModel):
-    content_file: Path
-    output_file: Path
-    href: str
-    lang: str
-    title: str
+        if isinstance(path, str):
+            path = Path(path)
 
+        if not path.exists():
+            raise FileNotFoundError(f"{path} not found.")
 
-class BlogPost(Page):
-    date: datetime
+        return Path(path)
+
+    @classmethod
+    def load(cls, path: Optional[str] = None):
+        filepath = cls.get_file_path(path)
+        return ConfigModel(**yaml.safe_load(filepath.read_text()))
+
+    def save(self, path: Optional[str] = None):
+        filepath = ConfigModel.get_file_path(path)
+        filepath.write_text(yaml.dump(self.model_dump()))

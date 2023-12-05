@@ -1,8 +1,9 @@
 import os
+import shutil
 from pathlib import Path
 
 from werd.config import BlogPost, ConfigModel, Page
-from werd.render import find_template_file, get_blog_posts, get_page_list
+from werd.render import find_template_file, render_content
 
 CONFIG = ConfigModel(
     **{
@@ -15,8 +16,28 @@ CONFIG = ConfigModel(
             "source": "en",
             "output": ["en", "jp"],
         },
+        "translations_dir": "_translations",
     }
 )
+
+
+def test_render_content(tmp_path: Path):
+    # Copy the tests/content directory to _translations/en
+    content_dir = Path("tests/content").absolute()
+    template_dir = Path("tests/themes/default").absolute()
+    os.chdir(tmp_path)
+    for source, dest in [
+        (content_dir, tmp_path / "_translations" / "en"),
+        (template_dir, tmp_path / "themes" / "default"),
+    ]:
+        (dest).mkdir(parents=True)
+        shutil.copytree(source, dest, dirs_exist_ok=True)
+
+    # render the langauge content
+
+    render_content(CONFIG)
+
+    # Check the output directory
 
 
 def test_render_find_template_file(tmp_path: Path):
@@ -86,32 +107,3 @@ def test_render_find_template_file(tmp_path: Path):
     assert template_path == Path(
         "themes/default/blog/kirk_is_born.j2"
     ), "Should use the more specific 'kirk_is_born' blog template"
-
-
-def test_render_get_page_list(tmp_path: Path):
-    config = CONFIG.copy(update={"content_dir": Path("tests/content")})
-
-    pages_list = get_page_list(config)
-
-    assert len(pages_list) == 2, "Should have 2 pages"
-    for lang in pages_list:
-        assert len(pages_list) == len(
-            CONFIG.language.output
-        ), "Should have same number of sets of pages as languages"
-        for p in pages_list[lang]:
-            assert isinstance(p, Page), "Should be a Page object"
-            assert str(p.href).startswith(f"/{lang}"), "Should have the language prefix"
-
-
-def test_render_get_blog_posts(tmp_path: Path):
-    config = CONFIG.copy(update={"content_dir": Path("tests/content")})
-
-    blog_posts = get_blog_posts(config)
-
-    for lang in blog_posts:
-        assert len(blog_posts) == len(
-            CONFIG.language.output
-        ), "Should have same number of sets of pages as languages"
-        for p in blog_posts[lang]:
-            assert isinstance(p, BlogPost), "Should be a BlogPost object"
-            assert p.href.startswith(f"/{lang}"), "Should have the language prefix"

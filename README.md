@@ -51,35 +51,41 @@ To run the tests:
 ## TODOs
 In order of most likely to-do to least
 
-- [ ] Refactor to use [click](https://click.palletsprojects.com/)
-- [ ] Refactor commands to more uniform OOP to make shared state easier
 - [ ] Commands
     - [ ] **translate**
+        - [ ] sub-directories
         - [ ] Blog filename parser
         - [ ] Error page content
         - [ ] Parallel inference requests to speed up translations
-        - [ ] force generate all languages --flag
         - [ ] force generate 1 language --flag
+        - [X] force generate all languages --flag
         - [X] translate file names to be used for navigation.
         - [X] content using OpenAI
     - [ ] render **HTML** using theme
+        - [ ] Secondary content i.e. layout elements (not rendered as pages)
+        - [ ] navigation
+            - [ ] Hierarchy, directories as sub-menus
         - [ ] Non-content driven pages i.e.
-            - [ ] Site index language selection list
-            - [ ] blog index
+            - [ ] General index rendering
+                - [ ] Root
+                - [ ] directory roots
+                - [ ] blog index
+            - [X] Site index language selection list
             - [X] site root redirect to language page
             - [X] home/landing page
         - [ ] Error page, list content in all languages
-        - [X] navigation
         - [X] Switch language
         - [X] 1-to-1 rendering of content to a page using Jinja2 theme templates
     - [ ] **go** - translate and render in one command
+    - [ ] **server** - local web server of HTML output
     - [ ] **deploy**
-        - [ ] to S3 bucket or
-        - [ ] Github pages?
+        - [ ] to S3 bucket
         - [ ] ftp?
+        - [ ] ~~Github pages?~~ just a commit and push
     - [ ] **scaffold** - setup content, templates directories and config file.
 - [ ] Documentation site (using werd and translated)
 - [ ] Switch to SQLite for all data tracking?
+- [X] Refactor to use [click](https://click.palletsprojects.com/)
 
 ## Credits
 
