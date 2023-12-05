@@ -14,6 +14,9 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+# Visitor Design Pattern
+# see: https://stackoverflow.com/a/25895156/196732
+
 
 class Node:
     def accept(self, visitor: "Visitor"):
