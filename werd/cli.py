@@ -18,17 +18,6 @@ def check_env():
         raise Exception("OPENAI_API_KEY not found in environment variables?")
 
 
-def check_config() -> ConfigModel:
-    """Check for config file."""
-    if not Path("config.yaml").exists():
-        raise FileNotFoundError("config.yaml file not found.")
-
-    with open("config.yaml", "r") as f:
-        config = ConfigModel(**yaml.safe_load(f))
-
-    return config
-
-
 @click.group()
 @click.version_option()
 @click.pass_context
@@ -38,7 +27,8 @@ def cli(ctx):
 
     if ctx.invoked_subcommand != "init":
         try:
-            ctx.obj["config"] = check_config()
+            # TODO: Optioanlly pass a config file path
+            ctx.obj["config"] = ConfigModel.load()
         except FileNotFoundError as e:
             click.echo("config.yaml file not found. Try running `werd init`")
             exit(1)
