@@ -4,7 +4,8 @@ from collections import defaultdict
 from pathlib import Path
 from string import Template
 
-import openai
+import tiktoken
+from openai import OpenAI
 
 from werd.content_tracker import ContentTracker
 from werd.strings_map import StringMap
@@ -15,6 +16,49 @@ ${content}
 """
 OUTPUT_TEMPLATE = """lang: ${target_lang}
 ---"""
+
+def count_tokens(messages, model="gpt-3.5-turbo"):
+    """
+    Return the number of tokens used by a list of messages.
+    From" https://cookbook.openai.com/examples/how_to_count_tokens_with_tiktoken
+    """
+    try:
+        encoding = tiktoken.encoding_for_model(model)
+    except KeyError:
+        print("Warning: model not found. Using cl100k_base encoding.")
+        encoding = tiktoken.get_encoding("cl100k_base")
+    if model in {
+        "gpt-3.5-turbo-0613",
+        "gpt-3.5-turbo-16k-0613",
+        "gpt-4-0314",
+        "gpt-4-32k-0314",
+        "gpt-4-0613",
+        "gpt-4-32k-0613",
+        }:
+        tokens_per_message = 3
+        tokens_per_name = 1
+    elif model == "gpt-3.5-turbo-0301":
+        tokens_per_message = 4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
+        tokens_per_name = -1  # if there's a name, the role is omitted
+    elif "gpt-3.5-turbo" in model:
+        # print("Warning: gpt-3.5-turbo may update over time. Returning num tokens assuming gpt-3.5-turbo-0613.")
+        return count_tokens(messages, model="gpt-3.5-turbo-0613")
+    elif "gpt-4" in model:
+        # print("Warning: gpt-4 may update over time. Returning num tokens assuming gpt-4-0613.")
+        return count_tokens(messages, model="gpt-4-0613")
+    else:
+        raise NotImplementedError(
+            f"""count_tokens() is not implemented for model {model}. See https://github.com/openai/openai-python/blob/main/chatml.md for information on how messages are converted to tokens."""
+        )
+    num_tokens = 0
+    for message in messages:
+        num_tokens += tokens_per_message
+        for key, value in message.items():
+            num_tokens += len(encoding.encode(value))
+            if key == "name":
+                num_tokens += tokens_per_name
+    num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
+    return num_tokens
 
 
 def write_content_with_path(
@@ -39,15 +83,18 @@ def translate_string(
     content: str, source_lang: str, target_lang: str, no_markdown=False
 ):
     """Translate content to lang."""
-    response = openai.ChatCompletion.create(
-        api_key=os.getenv("OPENAI_API_KEY"),
-        model="gpt-3.5-turbo",
-        messages=[
+
+    messages = [
             {
                 "role": "system",
-                "content": "You are a helpful translation assistant. Translate the markdown into the target language preserving the markdown formating."
-                if no_markdown
-                else "You are a helpful translation assistant. Translate the text into the target language. Do not translate the markdown formating.",
+                "content": (
+                    "You are a helpful translation assistant. "
+                    "Translate the text into the target language. "
+                    "Do not translate the markdown formating."
+                    if no_markdown
+                    else "You are a helpful translation assistant. "
+                    "Translate the markdown into the target language preserving the markdown formating."
+                ),
             },
             {
                 "role": "user",
@@ -61,9 +108,15 @@ def translate_string(
                     target_lang=target_lang
                 ),
             },
-        ],
+        ]
+
+    client = OpenAI()
+    response = client.chat.completions.create(
+        model="gpt-4-32k",
+        messages=messages,
+        max_tokens=count_tokens(messages, model="gpt-4-32k") * 2,  # I guess this ratio depends on the two languages?
     )
-    return response.choices[0]["message"]["content"]
+    return response.choices[0].message.content
 
 
 def translate_content(config: dict, translate_all: bool = False):
@@ -76,6 +129,16 @@ def translate_content(config: dict, translate_all: bool = False):
     strings_map = StringMap(config)
 
     config.translations_dir.mkdir(parents=True, exist_ok=True)
+
+    # Site name
+
+    for lang in config.language.output:
+        if lang == "en":
+            continue
+        translation = translate_string("blog", "en", lang, no_markdown=True)
+        strings_map.add("blog", lang, translation)
+
+    # Content files
 
     for file in config.content_dir.glob("**/*"):
         if (
