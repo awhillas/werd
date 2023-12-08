@@ -2,19 +2,25 @@ import os
 import shutil
 from pathlib import Path
 
-from werd.config import BlogPost, ConfigModel, Page
+from dotenv import load_dotenv
+
+from werd.config import ConfigModel
+from werd.data import BlogPost, Page
 from werd.render import find_template_file, render_content
+
+load_dotenv("tests/.env")
 
 CONFIG = ConfigModel(
     **{
         "site_name": {
             "en": "Data Ninja",
             "jp": "データ忍者",
+            "de": "Daten Ninja",
         },
         "language": {
             "default": "en",
             "source": "en",
-            "output": ["en", "jp"],
+            "output": ["de", "jp", "en"],
         },
         "translations_dir": "_translations",
     }
@@ -23,12 +29,12 @@ CONFIG = ConfigModel(
 
 def test_render_content(tmp_path: Path):
     # Copy the tests/content directory to _translations/en
-    content_dir = Path("tests/content").absolute()
-    template_dir = Path("tests/themes/default").absolute()
+    content_dir = Path("tests/_translations").absolute()
+    template_dir = Path("tests/theme").absolute()
     os.chdir(tmp_path)
     for source, dest in [
-        (content_dir, tmp_path / "_translations" / "en"),
-        (template_dir, tmp_path / "themes" / "default"),
+        (content_dir, tmp_path / "_translations"),
+        (template_dir, tmp_path / "theme"),
     ]:
         (dest).mkdir(parents=True)
         shutil.copytree(source, dest, dirs_exist_ok=True)

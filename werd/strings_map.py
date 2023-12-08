@@ -5,10 +5,12 @@ from pathlib import Path
 
 class Singleton(type):
     _instances = {}
+
     def __call__(cls, *args, **kwargs):
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
+
 
 class StringMap(metaclass=Singleton):
     """Manage a map of string translations."""
@@ -46,7 +48,7 @@ class StringMap(metaclass=Singleton):
 
     @classmethod
     def to_title(self, file: Path):
-        return file.stem.replace("_", " ").strip().title()
+        return file.stem.replace("_", " ").strip()
 
     def get_title(self, lang: str, file: Path):
         return self.lookup(lang, self.to_title(file))

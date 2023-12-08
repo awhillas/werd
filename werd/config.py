@@ -37,7 +37,7 @@ class ConfigModel(BaseModel):
     index_page: str = "home"
     content_dir: Path = Path("content")
     output_dir: Path = Path("output")
-    theme_dir: Path = Path("themes/default")
+    theme_dir: Path = Path("theme")
     translations_dir: Path = Path("_translations")
 
     @validator("content_dir", "translations_dir", "theme_dir")

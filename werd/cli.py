@@ -49,17 +49,31 @@ def init():
     is_flag=True,
     help="All translation even if the source file has not changed.",
 )
+@click.option(
+    "-l",
+    "--langs",
+    is_flag=False,
+    type=click.STRING,
+    required=False,
+    help="Force translate a comma seperated list of languages.",
+)
 @click.pass_context
-def translate(ctx, all: bool):
+def translate(ctx, all: bool, langs: str):
     "Translate the source markdown files into the target languages."
     from werd.translate import translate_content
+
+    if langs:
+        langs = langs.split(",")
+        click.echo(f"Translating into {langs}")
+    else:
+        langs = []
 
     translate_all = False
     if all:
         click.echo("Translating all content files.")
         translate_all = True
 
-    translate_content(ctx.obj["config"], translate_all)
+    translate_content(ctx.obj["config"], translate_all, langs)
 
 
 @cli.command(name="render")

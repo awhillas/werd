@@ -42,31 +42,30 @@ class FileSystemNode(Node):
         kids = []
 
         for child in self.path.iterdir():
-            childNode = FileSystemNode(child)
-            if childNode.is_folder():
-                kids.append(childNode.accept(visitor))
+            child_node = FileSystemNode(child)
+            if child_node.is_folder():
+                kids.append(child_node.accept(visitor))
             else:
-                kids.append(visitor.visit(childNode))
+                kids.append(visitor.visit(child_node))
 
         return visitor.visit(self, kids)
 
 
-class PageTreeNode(Node):
-    def accept(self, visitor):
-        visitor.visit(self, self.subpages)
-        for page in self.subpages:
-            page.accept(visitor)
-
-
-class Page(BaseModel, PageTreeNode):
+class Page(BaseModel):
     href: str
     lang: str
     title: str
+    filepath: Path
+
+    def accept(self, visitor):
+        visitor.visit(self)
+        if hasattr(self, "subpages"):
+            for page in self.subpages:
+                page.accept(visitor)
 
 
 class ContentPage(Page):
     content: str
-    content_file: Path
 
 
 class BlogPost(ContentPage):
@@ -74,6 +73,11 @@ class BlogPost(ContentPage):
 
 
 class IndexPage(Page):
+    subpages: list[Page]
+
+
+class ContentIndexPage(Page):
+    content: str
     subpages: list[Page]
 
 

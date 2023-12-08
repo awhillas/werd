@@ -1,0 +1,3 @@
+# Das A-Team
+
+Im Jahr 1972 wurde eine Elite-Kommandoeinheit von einem Militärgericht wegen eines Verbrechens, das sie nicht begangen hatten, ins Gefängnis geschickt. Diese Männer entkamen prompt aus dem Hochsicherheitstrakt in den Untergrund von Los Angeles. Heute, noch immer von der Regierung gesucht, überleben sie als Söldner. Wenn Sie ein Problem haben, wenn Ihnen sonst niemand helfen kann und wenn Sie sie finden können. Vielleicht können Sie, das A-Team anheuern.

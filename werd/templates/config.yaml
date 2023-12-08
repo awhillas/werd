@@ -5,6 +5,6 @@ language:
   default: en
   source: en
   output:
-  - en
   - jp
   - de
+  - en

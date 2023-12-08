@@ -16,6 +16,7 @@ dependencies = [
     "openai",
     "pydantic",
     "tiktoken",
+    "beautifulsoup4",
 ]
 
 [project.urls]

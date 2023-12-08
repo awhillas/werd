@@ -17,6 +17,7 @@ ${content}
 OUTPUT_TEMPLATE = """lang: ${target_lang}
 ---"""
 
+
 def count_tokens(messages, model="gpt-3.5-turbo"):
     """
     Return the number of tokens used by a list of messages.
@@ -34,11 +35,13 @@ def count_tokens(messages, model="gpt-3.5-turbo"):
         "gpt-4-32k-0314",
         "gpt-4-0613",
         "gpt-4-32k-0613",
-        }:
+    }:
         tokens_per_message = 3
         tokens_per_name = 1
     elif model == "gpt-3.5-turbo-0301":
-        tokens_per_message = 4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
+        tokens_per_message = (
+            4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
+        )
         tokens_per_name = -1  # if there's a name, the role is omitted
     elif "gpt-3.5-turbo" in model:
         # print("Warning: gpt-3.5-turbo may update over time. Returning num tokens assuming gpt-3.5-turbo-0613.")
@@ -85,41 +88,40 @@ def translate_string(
     """Translate content to lang."""
 
     messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are a helpful translation assistant. "
-                    "Translate the text into the target language. "
-                    "Do not translate the markdown formating."
-                    if no_markdown
-                    else "You are a helpful translation assistant. "
-                    "Translate the markdown into the target language preserving the markdown formating."
-                ),
-            },
-            {
-                "role": "user",
-                "content": Template(INPUT_TEMPLATE).substitute(
-                    content=content, source_lang=source_lang
-                ),
-            },
-            {
-                "role": "user",
-                "content": Template(OUTPUT_TEMPLATE).substitute(
-                    target_lang=target_lang
-                ),
-            },
-        ]
+        {
+            "role": "system",
+            "content": (
+                "You are a helpful translation assistant. "
+                "Translate the text into the target language. "
+                "Do not translate the markdown formating."
+                if no_markdown
+                else "You are a helpful translation assistant. "
+                "Translate the markdown into the target language preserving the markdown formating."
+            ),
+        },
+        {
+            "role": "user",
+            "content": Template(INPUT_TEMPLATE).substitute(
+                content=content, source_lang=source_lang
+            ),
+        },
+        {
+            "role": "user",
+            "content": Template(OUTPUT_TEMPLATE).substitute(target_lang=target_lang),
+        },
+    ]
 
     client = OpenAI()
     response = client.chat.completions.create(
         model="gpt-4-32k",
         messages=messages,
-        max_tokens=count_tokens(messages, model="gpt-4-32k") * 2,  # I guess this ratio depends on the two languages?
+        max_tokens=count_tokens(messages, model="gpt-4-32k")
+        * 2,  # I guess this ratio depends on the two languages?
     )
     return response.choices[0].message.content
 
 
-def translate_content(config: dict, translate_all: bool = False):
+def translate_content(config: dict, translate_all: bool = False, langs: list = []):
     """
     Generate static site from content and theme.
     """
@@ -130,13 +132,20 @@ def translate_content(config: dict, translate_all: bool = False):
 
     config.translations_dir.mkdir(parents=True, exist_ok=True)
 
-    # Site name
+    # Bits and pieces
 
-    for lang in config.language.output:
-        if lang == "en":
-            continue
-        translation = translate_string("blog", "en", lang, no_markdown=True)
-        strings_map.add("blog", lang, translation)
+    languages = langs if langs else config.language.output
+
+    for lang in languages:
+        if lang != config.language.source:
+            for string in ["blog", config.site_name[config.language.source]]:
+                if not strings_map.is_translated(string, lang):
+                    print(f"Translating '{string}' into {lang}...")
+                    translation = translate_string(
+                        string, config.language.source, lang, no_markdown=True
+                    )
+                    print("\r" + translation)
+                    strings_map.add(string, lang, translation)
 
     # Content files
 
@@ -144,15 +153,15 @@ def translate_content(config: dict, translate_all: bool = False):
         if (
             file.is_file()
             and file.suffix == ".md"
-            and (translate_all or tracker.has_changed(str(file)))
+            and (translate_all or langs or tracker.has_changed(str(file)))
         ):
             content = file.read_text()
             tracker.update(file)
 
-            for lang in config.language.output:
+            for lang in languages:
                 # Translate the filename
 
-                string = file.stem.replace("_", " ")
+                string = StringMap.to_title(file)
                 if config.language.source != lang:
                     if not strings_map.is_translated(string, lang):
                         print(f"Translating '{string}' into {lang}")
@@ -168,7 +177,7 @@ def translate_content(config: dict, translate_all: bool = False):
                 lang_dir = config.translations_dir / lang
 
                 if lang != config.language.source:
-                    print(f"Translating {file} into {lang}...")
+                    print(f"Translating file {file} into {lang}...")
                     translated_content = translate_string(
                         content, config.language.source, lang
                     )

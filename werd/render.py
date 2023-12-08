@@ -5,11 +5,20 @@ from datetime import datetime
 from functools import partial
 from pathlib import Path
 
+from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader
 from markdown import markdown
 
 from werd import PACKAGEDIR
-from werd.data import BlogPost, FileSystemNode, IndexPage, Page, PageTreeNode, Visitor
+from werd.data import (
+    BlogPost,
+    ContentIndexPage,
+    ContentPage,
+    FileSystemNode,
+    IndexPage,
+    Page,
+    Visitor,
+)
 from werd.strings_map import StringMap
 
 
@@ -46,7 +55,7 @@ def find_template_file(config: dict, rel_file: Path):
         if theme_file.exists():
             break
 
-    return theme_file
+    return theme_file.relative_to(config.theme_dir)
 
 
 def copy_static_assets(config: dict):
@@ -68,42 +77,91 @@ def copy_static_assets(config: dict):
     copy_assets(config.content_dir, config.output_dir)
 
 
-class LayoutContentRenderer(Visitor):
+def get_layout_content(lang, config: dict):
     """Looks for a _layout dir and renders it as HTML from markdown."""
+    root = config.translations_dir / lang / "_layout"
+    if root.exists():
+        return {
+            child.stem: markdown(child.read_text())
+            for child in root.iterdir()
+            if child.is_file()
+        }
+    else:
+        return {}
 
-    def __init__(self, lang, config: dict):
-        self.lang = lang
-        self.config = config
 
-    def visit(self, node: FileSystemNode, subpages: list[Page] = []):
-        if not node.is_folder():
-            return node.path.stem, markdown(node.path.read_text())
+def get_languages():
+    """
+    Get a map of 2 letter language codes to language names in the given language.
+    """
+    return json.loads((PACKAGEDIR / "langs.json").read_text())
 
 
 class PageTree(Visitor):
-    """Build a tree of Page objects from a given content directory."""
+    """
+    Build a tree of Page objects from a given content directory.
+    Should encapsulate the logical view of the website so ideally use many different
+    renderer classes to produce different formats as output.
+    """
 
     def __init__(self, lang, config: dict, string_map: StringMap):
         self.lang = lang
         self.config = config
         self.string_map = string_map
 
-    def visit(self, node: FileSystemNode, subpages: list[Page] = []):
-        if node.is_folder() and not node.path.name.startswith("_"):
-            return IndexPage(
-                title=self.string_map.get_title(self.lang, node.path),
-                href=str(
-                    node.path.relative_to(self.config.translations_dir) / "index.html"
-                ),
-                lang=self.lang,
-                subpages=[s for s in subpages if s is not None],
+    def find_index_subpage(self, subpages: list[FileSystemNode]):
+        """Search the given subpages for an spcially named index page."""
+        try:
+            # Find the index replacement page in subpages if it exists
+            return next(
+                s for s in subpages if s.filepath.stem == self.config.index_page
             )
+        except StopIteration:
+            return False
+
+    def visit(self, node: FileSystemNode, subpages: list[Page] = []):
+        # Skip special directories
+        if "_layout" in node.path.parts or node.path.name in [
+            "assets",
+        ]:
+            return None
+
+        title = self.string_map.get_title(self.lang, node.path)
+
+        if node.is_folder():
+            home_page = self.find_index_subpage(subpages)
+            if home_page:
+                # subpages.remove(home_page)
+                return ContentIndexPage(
+                    filepath=node.path,
+                    title=home_page.title,
+                    href=str(
+                        node.path.relative_to(self.config.translations_dir)
+                        / "index.html"
+                    ),
+                    lang=self.lang,
+                    content=home_page.content,
+                    subpages=subpages,
+                )
+            else:
+                # Not a special index page, so just return a normal index page
+                return IndexPage(
+                    filepath=node.path,
+                    title=title,
+                    href=str(
+                        node.path.relative_to(self.config.translations_dir)
+                        / "index.html"
+                    ),
+                    lang=self.lang,
+                    subpages=[s for s in subpages if s is not None],
+                )
         else:
             if node.path.suffix == ".md":
                 content = markdown(node.path.read_text())
+
                 if node.is_a("blog"):
                     return BlogPost(
-                        title=self.string_map.get_title(self.lang, node.path),
+                        title=title,
                         href=str(
                             node.path.parent.relative_to(self.config.translations_dir)
                             / node.path.stem
@@ -111,12 +169,12 @@ class PageTree(Visitor):
                         ),
                         lang=self.lang,
                         content=content,
-                        content_file=node.path,
+                        filepath=node.path,
                         date=datetime.strptime(node.path.parent.name, "%Y-%m-%d"),
                     )
                 else:
-                    return Page(
-                        title=self.string_map.get_title(self.lang, node.path),
+                    return ContentPage(
+                        title=title,
                         href=str(
                             node.path.relative_to(
                                 self.config.translations_dir
@@ -124,32 +182,26 @@ class PageTree(Visitor):
                         ),
                         lang=self.lang,
                         content=content,
-                        content_file=node.path,
+                        filepath=node.path,
                     )
 
 
 class HtmlPageRenderer(Visitor):
     """Transverses a Page tree and renders each Page as a HTML file."""
 
-    def __init__(
-        self, lang, config, root: PageTreeNode, layout_content: dict[str, str]
-    ):
+    def __init__(self, lang, config, root: Page, layout_content: dict[str, str]):
         self.config = config
         self.lang = lang
-        self.all_languages = self.get_languages()
+        self.all_languages = get_languages()
         self.root = root
         self.layout_content = layout_content
         self.env = Environment(loader=FileSystemLoader(config.theme_dir))
 
-    def get_languages():
+    def visit(self, page: Page):
         """
-        Get a map of 2 letter language codes to language names in the given language.
+        Can do matching here and handle each of the Page types differently.
         """
-        return json.loads((PACKAGEDIR / "langs.json").read_text())
-
-    def visit(self, node: PageTreeNode):
-        theme_file = find_template_file(self.config, node.path)
-
+        theme_file = find_template_file(self.config, page.filepath)
         template = self.env.get_template(str(theme_file))
 
         site_name = (
@@ -158,8 +210,11 @@ class HtmlPageRenderer(Visitor):
             else self.config.site_name[self.config.language.default]
         )
 
+        # Render the HTML
+
         html = template.render(
-            page=node,
+            page=page,
+            subpages=page.subpages if hasattr(page, "subpages") else [],
             config=self.config,
             site_name=site_name,
             home=self.root,
@@ -170,9 +225,24 @@ class HtmlPageRenderer(Visitor):
             layout=self.layout_content,
         )
 
+        # Save the HTML
+
+        html = BeautifulSoup(html, "html.parser").prettify(formatter="html5")
+        save_path = self.config.output_dir / page.href
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        save_path.write_text(html)
+
+
+class RssRenderer(Visitor):
+    """Render the RSS feed for everything."""
+
+    ...
+
 
 def render_content(config: dict):
     """Translates content and renders HTML."""
+    # assert config.theme_dir.exists(), f"Theme directory '{config.theme_dir}' not found?"
+
     for lang in config.language.output:
         # Build the page tree
 
@@ -182,18 +252,26 @@ def render_content(config: dict):
 
         # Get the layout content
 
-        layout_content_dir = root / "_layout"
-        if layout_content_dir.exists():
-            layout_content = FileSystemNode(layout_content_dir).accept(
-                LayoutContentRenderer(lang, config)
-            )
-        else:
-            layout_content = {}
+        layout_content = get_layout_content(lang, config)
 
         # Render the HTML
 
-        root_node.accept(HtmlPageRenderer(lang, config, page_tree, layout_content))
+        page_tree.accept(HtmlPageRenderer(lang, config, page_tree, layout_content))
 
     # Static assets
 
     copy_static_assets(config)
+
+    # Landing page
+
+    env = Environment(loader=FileSystemLoader(config.theme_dir))
+    template = env.get_template("landing.j2")
+    html = template.render(
+        title=config.site_name[config.language.default],
+        lang=config.language.default,
+        config=config,
+        languages=get_languages(),
+        supported_languages=config.language.output,
+        layout=layout_content,
+    )
+    (config.output_dir / "index.html").write_text(html)

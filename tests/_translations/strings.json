@@ -1,0 +1,30 @@
+{
+    "blog": {
+        "jp": "ブログ",
+        "de": "Blog"
+    },
+    "My Multilingul Website!": {
+        "jp": "私の多言語ウェブサイト！",
+        "de": "Meine mehrsprachige Webseite!"
+    },
+    "about us": {
+        "jp": "私たちについて",
+        "de": "über uns",
+        "en": "About Us"
+    },
+    "a-team": {
+        "jp": "a-チーム",
+        "de": "A-Team",
+        "en": "A-Team"
+    },
+    "2023-12-08 The day I rocked the world": {
+        "jp": "2023-12-08 世界を揺るがした日",
+        "de": "2023-12-08 Der Tag, an dem ich die Welt gerockt habe",
+        "en": "2023-12-08 The day I rocked the world"
+    },
+    "footer": {
+        "jp": "フッター",
+        "de": "Fußzeile",
+        "en": "footer"
+    }
+}
