@@ -32,6 +32,81 @@ You can also use:
 
     python -m werd --help
 
+### Command Line Usage
+
+#### Requirements
+
+- An `OPENAI_API_KEY` environment variable is required for translation commands. Set this before translating:
+  
+      export OPENAI_API_KEY=your_openai_api_key_here
+
+- A config file (`config.yaml`) is required for most commands. Initialize your project first with `werd init`.
+
+---
+
+#### `werd init`
+
+Initialize a new `config.yaml` in your project directory.
+
+    werd init
+
+Creates a default configuration file. Run this first in a new project.
+
+---
+
+#### `werd translate`
+
+Translate your markdown content into one or more target languages using OpenAI.
+
+    werd translate
+
+By default, translates all configured content that has changed since the last run.
+
+Options:
+
+- `-a`, `--all`  
+  Translate all content files, even if the source files have not changed.
+
+      werd translate --all
+
+- `-l`, `--langs LANGS`  
+  Force translation of specific comma-separated language codes (overrides config defaults).
+
+      werd translate --langs fr,de,es
+
+Examples:
+
+    werd translate --all --langs fr,it
+
+---
+
+#### `werd render`
+
+Render the translated markdown files into HTML using Jinja2 templates.
+
+    werd render
+
+This generates static HTML from your translated content into the output directory specified in your config.
+
+---
+
+#### Version
+
+To check the version:
+
+    werd --version
+
+---
+
+For further help on any specific command:
+
+    werd [command] --help
+
+Example:
+
+    werd translate --help
+
+
 ## Development
 
 To contribute to this tool, first checkout the code. Then create a new virtual environment:
